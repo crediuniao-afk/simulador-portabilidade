@@ -57,6 +57,7 @@ details.fora{margin-top:16px}details.fora summary{cursor:pointer;color:var(--mut
 <h1>Simulador de portabilidade</h1><p class="note">Informe o nascimento, carregue o extrato e clique em Ver possibilidades.</p>
 <p class="sub">Cole o extrato de empréstimos consignados do INSS e veja quais bancos podem portar.</p>
 <label style="margin-top:10px">Data de nascimento do cliente (obrigatória)<input id="nasc0" required type="date" min="1900-01-01" aria-describedby="ageHint0"></label><p class="note" id="ageHint0" aria-live="polite"></p>
+<div id="benefitStartFields"></div>
 <textarea id="txt" placeholder="Cole aqui o texto do extrato (Meu INSS &gt; Histórico de empréstimo consignado)"></textarea>
 <label style="margin-top:10px">Ou carregue o arquivo do extrato (PDF ou texto)<input id="file" type="file" accept=".pdf,.txt,application/pdf,text/plain"></label>
 
@@ -69,6 +70,7 @@ details.fora{margin-top:16px}details.fora summary{cursor:pointer;color:var(--mut
 <button class="lnk" id="back" type="button">&larr; Colar outro extrato</button>
 <h1 id="ttl">Bancos que podem portar</h1>
 <div id="vig"></div>
+<details class="bank" id="benefitEdit"><summary>Benefício e invalidez (editar)</summary><div id="benefitEditFields"></div></details>
 <div id="pick" style="margin-bottom:10px"></div>
 <div class="sum" id="sum"></div>
 <details class="bank" id="dados" style="margin-top:12px"><summary>Dados do contrato (editar)</summary><div class="grid" style="margin-top:10px">
@@ -235,8 +237,82 @@ function birthHint(id,target){
 let banks=R.map(r=>({...Object.fromEntries(K.map((k,j)=>[k,r[j]])),ageRule:AGE_RULES[r[0]]}));
 const TXT=['nome','esp','bloq'], BOOL=['pura','agrega'];
 
+const INV_RULES={
+'QualiBanking':'55 a 57 anos com mais de 15 anos de benefício; a partir de 58 anos, sem restrição específica de invalidez.',
+'Banrisul':'55 a 59 anos e 11 meses com mais de 15 anos de benefício; a partir de 60 anos, sem restrição específica de invalidez.',
+'BRB':'A partir de 60 anos, sem restrição específica de invalidez.',
+'C6 Consig':'55 a 59 anos com mais de 15 anos de benefício: dispensa verificação. Com menos de 15 anos, ou idade abaixo de 55: última perícia desde janeiro/2017. A partir de 60 anos, sem restrição específica. Exatamente 15 anos: confirmar com o banco.',
+'Daycoval':'40 anos completos até antes dos 52: tabela de invalidez. De 53 a 59 anos e 11 meses: mais de 13 anos de benefício. A partir de 60 anos, sem restrição específica. O PDF não define a faixa dos 52 anos.',
+'Digio':'A partir de 60 anos, sem restrição específica de invalidez.',
+'Facta':'55 a 59 anos com 15 anos ou mais de benefício; a partir de 60 anos, sem restrição específica de invalidez.',
+'Finanto':'Espécie 32: somente contrato novo, acima de 60 anos (não se aplica à portabilidade). Espécie 92: a partir de 60 anos.',
+'Happy Consig':'55 a 59 anos com mais de 15 anos de benefício; a partir de 60 anos, sem restrição específica de invalidez.',
+'Havecred':'A partir de 58 anos, sem restrição específica de invalidez.',
+'icred':'55 a 59 anos com 15 anos de benefício; a partir de 60 anos, sem restrição específica de invalidez.',
+'Nossa Fintech':'55 a 57 anos e 11 meses com 15 anos de benefício. Outras faixas não estão definidas neste PDF.',
+'PB Consignado':'55 a 57 anos com 15 anos ou mais de benefício; a partir de 58 anos, sem restrição específica. Demais casos: comunicação de decisão com assunto Aposentadoria por invalidez, Pedido de acréscimo (25%) ou Aposentadoria por incapacidade permanente e decisão Deferimento do pedido.'
+};
+function benefitFields(prefix){return `<label>Espécie do benefício (obrigatória)<select id="${prefix}species" required><option value="">Selecione</option><option value="other">Outra espécie (não é 32 nem 92)</option><option value="32">32 — Aposentadoria por invalidez previdenciária</option><option value="92">92 — Aposentadoria por invalidez acidentária</option></select></label><div id="${prefix}invFields" hidden><p class="note">Preencha o que estiver disponível. O sistema indicará os bancos que precisam de informações adicionais.</p><div class="grid"><label>Data de início do benefício<input id="${prefix}benefitStart" type="date" min="1900-01-01"></label><label>Data da última perícia<input id="${prefix}exam" type="date" min="1900-01-01"></label><label>Comunicação de decisão (PB)<select id="${prefix}decision"><option value="">Não conferida</option><option value="yes">Conferida: assunto aceito e pedido deferido</option><option value="no">Não atende aos critérios</option></select></label></div><p class="note">PB: assunto “Aposentadoria por invalidez”, “Pedido de acréscimo (25%)” ou “Aposentadoria por incapacidade permanente”; decisão “Deferimento do pedido”.</p></div>`;}
+const BENEFIT_KEYS=['species','benefitStart','exam','decision'];
+function syncBenefit(from,to){for(const k of BENEFIT_KEYS)$(to+k).value=$(from+k).value;toggleBenefit(to);}
+function toggleBenefit(p){$(p+'invFields').hidden=!['32','92'].includes($(p+'species').value);}
+function benefitState(p,age){
+ const species=$(p+'species').value;
+ if(!species)return {error:'Selecione a espécie do benefício para continuar.'};
+ if(species==='other')return {species};
+ const raw=$(p+'benefitStart').value, rawExam=$(p+'exam').value;
+ const start=raw?dateOnly(raw):null,exam=rawExam?dateOnly(rawExam):null;
+ if(raw&&(!start||start>age.on||start<age.birth))return {error:'Confira a data de início do benefício: deve estar entre o nascimento e hoje.'};
+ if(rawExam&&(!exam||exam>age.on||exam<age.birth))return {error:'Confira a data da última perícia: deve estar entre o nascimento e hoje.'};
+ return {species,start,exam,decision:$(p+'decision').value};
+}
+function detectSpecies(text){
+ const s=norm(text).replace(/\s+/g,' '),m=s.match(/(?:especie(?:\s+do\s+beneficio)?|codigo\s+da\s+especie)\s*[:\-]?\s*(32|92)\b/);
+ if(m){$('startspecies').value=m[1];toggleBenefit('start');}
+}
+function invEligibility(b,age,data){
+ const ok={status:'ok',reason:''};if(data.species==='other')return ok;
+ const name=b.nome,y=age.age[0],pending=reason=>({status:'pending',reason}),no=reason=>({status:'no',reason});
+ const duration=(years,strict=false)=>{
+  if(!data.start)return pending(`informe o início do benefício para conferir ${strict?'mais de ':''}${years} anos de benefício`);
+  const anniversary=addMonths(data.start,years*12);
+  return (strict?age.on>anniversary:age.on>=anniversary)?ok:no(`exige ${strict?'mais de ':''}${years} anos de benefício`);
+ };
+ const exam=()=>!data.exam?pending('informe a data da última perícia'):data.exam>=dateOnly('2017-01-01')?ok:no('última perícia deve ser de janeiro/2017 ou posterior');
+ if(!INV_RULES[name])return pending('regra das espécies 32/92 não cadastrada para este banco');
+ if(name==='Finanto')return data.species==='32'?no('espécie 32 aceita somente para contrato novo; não para portabilidade'):y>=60?ok:no('espécie 92 exige 60 anos ou mais');
+ if(['BRB','Digio'].includes(name))return y>=60?ok:no('invalidez exige 60 anos ou mais');
+ if(name==='Havecred')return y>=58?ok:no('invalidez exige 58 anos ou mais');
+ if(name==='QualiBanking')return y>=58?ok:y>=55?duration(15,true):no('invalidez exige pelo menos 55 anos');
+ if(name==='C6 Consig'){
+  if(y>=60)return ok;if(y<55)return exam();
+  if(!data.start){const e=exam();return e.status==='ok'?ok:pending('informe início do benefício ou perícia desde janeiro/2017');}
+  const anniversary=addMonths(data.start,180);
+  if(age.on>anniversary)return ok;if(age.on<anniversary)return exam();
+  return pending('PDF não define o caso de exatamente 15 anos de benefício; confirme com C6');
+ }
+ if(name==='PB Consignado'){
+  if(y>=58)return ok;
+  if(y>=55){const d=duration(15);if(d.status==='ok')return ok;}
+  if(data.decision==='yes')return ok;
+  return data.decision==='no'?no('fora da dispensa por idade/tempo e comunicação de decisão não atende'):pending('confira a comunicação de decisão do PB (assunto aceito e deferimento) ou o tempo de benefício');
+ }
+ if(name==='Daycoval'){
+  if(y>=60)return ok;
+  if(y>=40&&y<52)return pending('faixa de 40 a menos de 52 anos exige tabela de invalidez; confirmar taxas/condições antes de simular');
+  if(y===52)return pending('faixa de 52 anos não definida no PDF; confirmar com Daycoval');
+  if(y>=53){const d=duration(13,true);return d.status==='ok'?pending('tempo atendido; confirmar tabela específica de invalidez do Daycoval'):d;}
+  return no('idade não atende às faixas de invalidez informadas');
+ }
+ if(name==='Nossa Fintech')return y>=55&&y<58?duration(15):pending('PDF só define 55 a 57 anos e 11 meses; confirmar demais idades com Nossa Fintech');
+ if(y>=60)return ok;
+ if(y<55)return no('invalidez exige pelo menos 55 anos');
+ return duration(15,['Banrisul','Happy Consig'].includes(name));
+}
+function invReference(){return `<details class="bank"><summary>Espécies 32/92 — DG, 16/09/2026</summary><p>As regras específicas deste PDF prevalecem sobre as observações anteriores de invalidez. Os limites gerais de idade e as demais condições continuam aplicáveis. “Acima de 60/58” é tratado como idade mínima de 60/58 anos completos. Casos com lacunas ou tabela própria ficam pendentes.</p>${Object.entries(INV_RULES).map(([n,t])=>`<p><b>${esc(n)}</b>: ${esc(t)}</p>`).join('')}<p><b>Bancos do PDF sem tabela financeira neste simulador:</b> BMG: 55–59 anos e 11 meses com 15 anos de benefício ou 60+. Pan: 22–70 anos, sujeito à análise. Mais BB: sem restrição específica. Quero +Crédito: 40 até antes dos 52, ou 53–59 anos e 11 meses com mais de 13 anos de benefício, ou 60+. VCTex: 55–59 com 15 anos de benefício ou 60+. PresençaBank: 55–59 com mais de 15 anos de benefício ou 60+. NBC: a partir de 55 com mais de 15 anos de benefício ou 60+. Não geram ofertas sem as demais condições cadastradas.</p></details>`;}
+
 function drawBanks(){
-  $('banks').innerHTML=banks.map((b,k)=>`<details class="bank"><summary>${esc(b.nome)}</summary><div class="grid" style="margin-top:10px">${b.ageRule?`<p style="grid-column:1/-1"><b>Idade:</b> a partir de ${b.ageRule.min} anos; até ${ageText(b.ageRule.max)} ${b.ageRule.at==='fim'?'no fim do contrato':'na contratação'}.<br>${esc(b.ageRule.note)}<br><small>Fonte: resumo DG, 08/09/2026. Limites sem dias incluem o último mês/ano indicado. Onde o PDF não especifica o momento, considera-se a contratação. O refin continua em 108x.</small></p>`:''}${K.filter(f=>!b.ageRule||!['idMin','idMax'].includes(f)).map(f=>{
+  $('banks').innerHTML=invReference()+banks.map((b,k)=>`<details class="bank"><summary>${esc(b.nome)}</summary><div class="grid" style="margin-top:10px">${b.ageRule?`<p style="grid-column:1/-1"><b>Idade:</b> a partir de ${b.ageRule.min} anos; até ${ageText(b.ageRule.max)} ${b.ageRule.at==='fim'?'no fim do contrato':'na contratação'}.<br>${esc(INV_RULES[b.nome]?'Para espécies 32/92, consulte a regra atualizada de 16/09/2026 acima.':b.ageRule.note)}<br><small>Fonte: resumo DG, 08/09/2026. Limites sem dias incluem o último mês/ano indicado. Onde o PDF não especifica o momento, considera-se a contratação. O refin continua em 108x.</small></p>`:''}${K.filter(f=>!b.ageRule||!['idMin','idMax'].includes(f)).map(f=>{
     const a=`data-k="${k}" data-f="${f}"`;
     if(BOOL.includes(f)) return `<label>${L[f]}<select ${a}><option value="1" ${+b[f]?'selected':''}>Sim</option><option value="0" ${+b[f]?'':'selected'}>Não</option></select></label>`;
     return `<label ${f=='nome'||f=='esp'||f=='bloq'?'style="grid-column:1/-1"':''}>${L[f]}<input ${a} ${TXT.includes(f)?'':'type="number" step="0.01" inputmode="decimal"'} value="${esc(b[f])}"></label>`;
@@ -288,15 +364,16 @@ function pick(){
 function calc(){
   const parc=+$('parc').value, prazo=+$('prazo').value, pagas=+$('pagas').value, i=+$('taxa').value/100;
   const marg=+$('marg').value||0, age=birthHint('nasc','ageHint');
-  $('ageScope').textContent='Filtro pelos limites gerais de idade. Benefícios por invalidez e restrições de formalização por idade/UF exigem conferir as condições específicas em Regras dos bancos. O vencimento final é estimado a partir de hoje.';
+  $('ageScope').textContent='Limites gerais de idade e regras das espécies 32/92 aplicados. Casos pendentes aparecem separados. Fonte invalidez: DG, 16/09/2026. O vencimento final é estimado a partir de hoje; formalização por UF depende de conferência.';
   if(age.error){$('sum').textContent=age.error;$('out').innerHTML='';$('dados').open=true;return;}
+  const benefit=benefitState('edit',age);if(benefit.error){$('sum').textContent=benefit.error;$('out').innerHTML='';$('benefitEdit').open=true;return;}
   const orig=norm($('orig').value.trim()), tipo=$('tipo').value, n=prazo-pagas;
   if(!(parc>0&&i>0&&n>0)){ $('sum').innerHTML='Abra "Dados do contrato" e confira parcela, taxa, prazo e parcelas pagas.'; $('dados').open=true; $('out').innerHTML=''; return; }
   const saldo=pv(parc,n,i), restante=parc*n;
   $('sum').innerHTML=`<div>Banco de origem<b>${esc($('orig').value)}</b></div><div>Parcela<b>${brl(parc)}</b></div><div>Restantes<b>${n}</b></div><div>Saldo estimado<b>${brl(saldo)}</b></div><div>Idade atual<b>${age.birth?ageText(age.age):'Não informada'}</b></div>`;
   const tmin=1.74, tmax=1.85;
   const rows=banks.map(b=>{
-    const m=[];
+    const m=[],iv=invEligibility(b,age,benefit);if(iv.status==='no')m.push(iv.reason);
     const bl=norm(b.bloq).split(',').map(s=>s.trim()).filter(Boolean);
     if(orig&&bl.some(x=>orig.includes(x))) m.push('não porta contratos deste banco');
     let min=tipo=='rede'?+b.rede:+b.corban;
@@ -306,7 +383,7 @@ function calc(){
     if(saldo<b.saldoMin) m.push(`saldo mínimo de ${brl(+b.saldoMin)}`);
     if(!(b.port/100<i)) m.push('taxa não é menor que a do contrato');
     let pura=null, refin=null;
-    if(!m.length){
+    if(!m.length&&iv.status==='ok'){
       if(+b.pura&&!agePura){ const ip=Math.max(+b.port,+b.puraMin)/100;
         if(ip<i){ const np=pmt(saldo,n,ip); if(np>=b.parcMin) pura={np,eco:restante-np*n,t:ip*100}; } }
       if(PR>n&&!ageRefin){
@@ -329,9 +406,10 @@ function calc(){
         if(!m.length)m.push('sem operação viável com as taxas atuais');
       }
     }
-    return {b,m,pura,refin,agePura,ageRefin};
+    return {b,m,pura,refin,agePura,ageRefin,iv};
   });
-  const ok=rows.filter(r=>!r.m.length).sort((a,z)=>(z.refin?z.refin.t:0)-(a.refin?a.refin.t:0));
+  const pending=rows.filter(r=>!r.m.length&&r.iv.status==='pending');
+  const ok=rows.filter(r=>!r.m.length&&r.iv.status==='ok').sort((a,z)=>(z.refin?z.refin.t:0)-(a.refin?a.refin.t:0));
   const no=rows.filter(r=>r.m.length);
   const bt=Math.max(0,...ok.map(r=>r.refin?r.refin.t:0)), be=Math.max(0,...ok.map(r=>r.pura?r.pura.eco:0));
   const card=r=>{
@@ -340,7 +418,7 @@ function calc(){
     <div><small>Só portar</small><big>${r.pura?brl(r.pura.np):'Não faz'}</big><small>${r.pura?`parcela, ${brl(parc-r.pura.np)} a menos${r.pura.t<1.2?' (taxa piso, pode ser maior)':''}`:esc(r.agePura||'sem troco')}</small></div>
     <div><small>Portar com troco</small><big>${r.refin?brl(r.refin.t):'Sem troco'}</big><small>${r.refin?`parcela ${brl(r.refin.p2)} em ${PR}x, taxa ${r.refin.tx}% a.m.`:esc(r.ageRefin||'não compensa')}</small></div></div></div>`;
   };
-  $('out').innerHTML=`<div class="hl">${ok.length} ${ok.length==1?'banco pode':'bancos podem'} portar</div>`+ok.map(card).join('')+
+  $('out').innerHTML=`<div class="hl">${ok.length} ${ok.length==1?'banco pode':'bancos podem'} portar</div>`+ok.map(card).join('')+(pending.length?`<details class="bank" open><summary>${pending.length} bancos com pendências de invalidez</summary>${pending.map(r=>`<p><b>${esc(r.b.nome)}</b>: ${esc(r.iv.reason)}${r.ageRefin?`; refin: ${esc(r.ageRefin)}`:''}</p>`).join('')}</details>`:'')+
    (no.length?`<details class="fora"><summary>${no.length} não podem portar</summary>${no.map(r=>`<p><b>${esc(r.b.nome)}</b>: <span class="mot">${esc(r.m.join('; '))}</span></p>`).join('')}</details>`:'');
 }
 
@@ -358,17 +436,18 @@ $('file').addEventListener('change',async e=>{
       for(let p=1;p<=pdf.numPages;p++){ const c=await (await pdf.getPage(p)).getTextContent(); t+=c.items.map(i=>i.str).join(' ')+'\n'; }
     } else t=await f.text();
     if(!t.trim()) throw new Error('Este PDF não contém texto legível. Use o PDF original baixado do Meu INSS.');
-    $('txt').value=t; $('err').textContent='Extrato carregado. Informe a data de nascimento e clique em Ver possibilidades.';
+    $('txt').value=t; detectSpecies(t); $('err').textContent='Extrato carregado. Informe a data de nascimento e clique em Ver possibilidades.';
   }catch(x){ $('err').textContent='Não consegui abrir o extrato. '+(x.message||'Confira o arquivo e tente novamente.'); }
   e.target.value='';
 });
 $('go').addEventListener('click',()=>{
   const age=birthHint('nasc0','ageHint0');if(age.error){$('err').textContent=age.error;$('nasc0').focus();return;}
+  detectSpecies($('txt').value);const benefit=benefitState('start',age);if(benefit.error){$('err').textContent=benefit.error;return;}syncBenefit('start','edit');
   contracts=parse($('txt').value);
   if(!contracts.length){ $('err').textContent='Não encontrei contratos ativos. Cole o texto completo do extrato, incluindo a seção "Contratos ativos e suspensos", ou use "Preencher manualmente".'; return; }
   $('err').textContent=''; $('nasc').value=$('nasc0').value; const ix=Math.max(0,contracts.findIndex(apto)); fill(contracts[ix]); pick(); if($('sel')) $('sel').value=ix; $('dados').open=false; vig(); show('v2'); calc();
 });
-$('manual').addEventListener('click',()=>{const age=birthHint('nasc0','ageHint0');if(age.error){$('err').textContent=age.error;$('nasc0').focus();return;}contracts=[];['orig','parc','prazo','pagas','taxa','marg'].forEach(k=>$(k).value='');$('nasc').value=$('nasc0').value;pick();$('dados').open=true;vig();show('v2');calc();});
+$('manual').addEventListener('click',()=>{const age=birthHint('nasc0','ageHint0');if(age.error){$('err').textContent=age.error;$('nasc0').focus();return;}const benefit=benefitState('start',age);if(benefit.error){$('err').textContent=benefit.error;return;}syncBenefit('start','edit');contracts=[];['orig','parc','prazo','pagas','taxa','marg'].forEach(k=>$(k).value='');$('nasc').value=$('nasc0').value;pick();$('dados').open=true;vig();show('v2');calc();});
 $('rules').addEventListener('click',()=>{drawBanks();show('v3');});
 $('back').addEventListener('click',()=>show('v1'));
 $('back3').addEventListener('click',()=>show('v1'));
@@ -381,6 +460,11 @@ for(const id of ['nasc0','nasc'])$(id).max=todayDate().toISOString().slice(0,10)
 $('nasc0').addEventListener('input',()=>birthHint('nasc0','ageHint0'));
 $('nasc').addEventListener('input',()=>{$('nasc0').value=$('nasc').value;birthHint('nasc0','ageHint0');});
 birthHint('nasc0','ageHint0');
+
+$('benefitStartFields').innerHTML=benefitFields('start');$('benefitEditFields').innerHTML=benefitFields('edit');
+for(const p of ['start','edit']){for(const k of ['benefitStart','exam'])$(p+k).max=todayDate().toISOString().slice(0,10);$(p+'species').addEventListener('change',()=>toggleBenefit(p));}
+$('benefitEdit').addEventListener('input',()=>{syncBenefit('edit','start');calc();});
+$('txt').addEventListener('change',()=>detectSpecies($('txt').value));
 </script>
 </body>
 </html>
