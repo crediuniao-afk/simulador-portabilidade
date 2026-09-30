@@ -58,7 +58,7 @@ details.fora{margin-top:16px}details.fora summary{cursor:pointer;color:var(--mut
 <p class="sub">Cole o extrato de empréstimos consignados do INSS e veja quais bancos podem portar.</p>
 <textarea id="txt" placeholder="Cole aqui o texto do extrato (Meu INSS &gt; Histórico de empréstimo consignado)"></textarea>
 <label style="margin-top:10px">Ou carregue o arquivo do extrato (PDF ou texto)<input id="file" type="file" accept=".pdf,.txt,application/pdf,text/plain"></label>
-<label style="margin-top:10px">Data de nascimento do cliente<input id="nasc0" type="date" min="1900-01-01" aria-describedby="ageHint0"></label><p class="note" id="ageHint0" aria-live="polite"></p>
+<label style="margin-top:10px">Data de nascimento do cliente (obrigatória)<input id="nasc0" required type="date" min="1900-01-01" aria-describedby="ageHint0"></label><p class="note" id="ageHint0" aria-live="polite"></p>
 <button id="go" class="pri" type="button">Ver possibilidades</button>
 <div id="err" class="err"></div>
 <p class="note"><button class="lnk" id="manual" type="button">Preencher manualmente</button> <button class="lnk" id="rules" type="button">Regras dos bancos</button></p>
@@ -78,7 +78,7 @@ details.fora{margin-top:16px}details.fora summary{cursor:pointer;color:var(--mut
 <label>Parcelas pagas<input id="pagas" type="number" inputmode="numeric"></label>
 <label>Taxa do contrato (% a.m.)<input id="taxa" type="number" inputmode="decimal" step="0.01"></label>
 <label>Margem livre (R$)<input id="marg" type="number" inputmode="decimal" step="0.01"></label>
-<label>Data de nascimento<input id="nasc" type="date" min="1900-01-01" aria-describedby="ageHint"></label><p class="note" id="ageHint" aria-live="polite"></p>
+<label>Data de nascimento (obrigatória)<input id="nasc" required type="date" min="1900-01-01" aria-describedby="ageHint"></label><p class="note" id="ageHint" aria-live="polite"></p>
 <label>Taxa do refin: mínima (% a.m.)<input id="tmin" type="number" inputmode="decimal" step="0.01" value="1.74" readonly></label>
 <label>Taxa do refin: máxima (% a.m.)<input id="tmax" type="number" inputmode="decimal" step="0.01" value="1.85" readonly></label>
 </div></details>
@@ -211,7 +211,7 @@ function ageExceeds(birth,on,max){
  return false;
 }
 function birthState(value,on=todayDate()){
- if(!value)return {birth:null,on};
+ if(!value)return {error:'Informe a data de nascimento para continuar a simulação.',on};
  const birth=dateOnly(value);
  if(!birth||birth>on)return {error:'Informe uma data de nascimento válida, que não seja futura.',on};
  return {birth,on,age:ageParts(birth,on)};
@@ -227,7 +227,7 @@ function ageEligibility(b,state,term,operation){
 }
 function birthHint(id,target){
  const state=birthState($(id).value);
- $(target).textContent=state.error||(state.birth?`Idade atual: ${ageText(state.age)}. Cálculo atualizado na data da simulação.`:'Sem data de nascimento: as possibilidades não serão filtradas por idade.');
+ $(target).textContent=state.error||(state.birth?`Idade atual: ${ageText(state.age)}. Cálculo atualizado na data da simulação.`:'Informe a data de nascimento para continuar a simulação.');
  return state;
 }
 
@@ -362,12 +362,12 @@ $('file').addEventListener('change',async e=>{
   e.target.value='';
 });
 $('go').addEventListener('click',()=>{
-  const age=birthHint('nasc0','ageHint0');if(age.error){$('err').textContent=age.error;return;}
+  const age=birthHint('nasc0','ageHint0');if(age.error){$('err').textContent=age.error;$('nasc0').focus();return;}
   contracts=parse($('txt').value);
   if(!contracts.length){ $('err').textContent='Não encontrei contratos ativos. Cole o texto completo do extrato, incluindo a seção "Contratos ativos e suspensos", ou use "Preencher manualmente".'; return; }
   $('err').textContent=''; $('nasc').value=$('nasc0').value; const ix=Math.max(0,contracts.findIndex(apto)); fill(contracts[ix]); pick(); if($('sel')) $('sel').value=ix; $('dados').open=false; vig(); show('v2'); calc();
 });
-$('manual').addEventListener('click',()=>{if(birthHint('nasc0','ageHint0').error){$('err').textContent='Confira a data de nascimento.';return;}contracts=[];['orig','parc','prazo','pagas','taxa','marg'].forEach(k=>$(k).value='');$('nasc').value=$('nasc0').value;pick();$('dados').open=true;vig();show('v2');calc();});
+$('manual').addEventListener('click',()=>{const age=birthHint('nasc0','ageHint0');if(age.error){$('err').textContent=age.error;$('nasc0').focus();return;}contracts=[];['orig','parc','prazo','pagas','taxa','marg'].forEach(k=>$(k).value='');$('nasc').value=$('nasc0').value;pick();$('dados').open=true;vig();show('v2');calc();});
 $('rules').addEventListener('click',()=>{drawBanks();show('v3');});
 $('back').addEventListener('click',()=>show('v1'));
 $('back3').addEventListener('click',()=>show('v1'));
