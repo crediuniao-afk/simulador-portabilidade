@@ -58,7 +58,7 @@ details.fora{margin-top:16px}details.fora summary{cursor:pointer;color:var(--mut
 <p class="sub">Cole o extrato de empréstimos consignados do INSS e veja quais bancos podem portar.</p>
 <textarea id="txt" placeholder="Cole aqui o texto do extrato (Meu INSS &gt; Histórico de empréstimo consignado)"></textarea>
 <label style="margin-top:10px">Ou carregue o arquivo do extrato (PDF ou texto)<input id="file" type="file" accept=".pdf,.txt,application/pdf,text/plain"></label>
-<label style="margin-top:10px">Idade do cliente (opcional, filtra os limites de idade)<input id="idade0" type="number" inputmode="numeric"></label>
+<label style="margin-top:10px">Data de nascimento do cliente<input id="nasc0" type="date" min="1900-01-01" aria-describedby="ageHint0"></label><p class="note" id="ageHint0" aria-live="polite"></p>
 <button id="go" class="pri" type="button">Ver possibilidades</button>
 <div id="err" class="err"></div>
 <p class="note"><button class="lnk" id="manual" type="button">Preencher manualmente</button> <button class="lnk" id="rules" type="button">Regras dos bancos</button></p>
@@ -78,11 +78,11 @@ details.fora{margin-top:16px}details.fora summary{cursor:pointer;color:var(--mut
 <label>Parcelas pagas<input id="pagas" type="number" inputmode="numeric"></label>
 <label>Taxa do contrato (% a.m.)<input id="taxa" type="number" inputmode="decimal" step="0.01"></label>
 <label>Margem livre (R$)<input id="marg" type="number" inputmode="decimal" step="0.01"></label>
-<label>Idade (opcional)<input id="idade" type="number" inputmode="numeric"></label>
+<label>Data de nascimento<input id="nasc" type="date" min="1900-01-01" aria-describedby="ageHint"></label><p class="note" id="ageHint" aria-live="polite"></p>
 <label>Taxa do refin: mínima (% a.m.)<input id="tmin" type="number" inputmode="decimal" step="0.01" value="1.74" readonly></label>
 <label>Taxa do refin: máxima (% a.m.)<input id="tmax" type="number" inputmode="decimal" step="0.01" value="1.85" readonly></label>
 </div></details>
-<div id="out"></div>
+<div id="ageScope" class="note"></div><div id="out"></div>
 <p class="note">Estimativa sem IOF, tarifas e seguro, priorizando a maior taxa de refin viável entre 1,85% e 1,74% a.m.; a taxa real depende da tabela e da análise. Regras: resumo DG Promotora de 08/09/2026. Confirme CET e total a pagar na proposta.</p>
 </div>
 
@@ -166,11 +166,77 @@ const R=[
 ['Nossa Fintech',0,0,0.60,1.75,108,1,1,'pan:12,agibank:12,facta:12',100,0,0,1000,0,18,70,'pine,c6,brb,qitech,inbursa,mercantil,nbc,bari'],
 ['PB Consignado',1,0,1.10,1.80,108,1,12,'agibank:13,inbursa:13,c6:25',100,0,120,0,0,18,68.95,'barigui,facta']
 ];
-let banks=R.map(r=>Object.fromEntries(K.map((k,j)=>[k,r[j]])));
+// Limites gerais transcritos das páginas 2–14 do resumo DG de 08/09/2026.
+// Quando o PDF não informa o momento, considera-se a contratação.
+// Limites sem dias incluem todo o último mês/ano indicado.
+const AGE_RULES={
+ 'QualiBanking':{min:18,max:[80,9],at:'fim',note:'Invalidez: a partir de 65 anos e 9 meses; máximo de 74 anos e 9 meses no final do contrato.'},
+ 'Banrisul':{min:21,max:[68,11,29],note:'Invalidez: a partir de 60 anos; de 55 anos a 59 anos e 11 meses, exige 15 anos de benefício.'},
+ 'BRB':{min:18,max:[80,11,29],at:'fim',note:'Invalidez: apenas a partir de 60 anos.'},
+ 'C6 Consig':{min:21,max:[73,11,29],note:'Invalidez: a partir de 60 anos sem verificação da perícia; de 55 a 59 anos com 15 anos de benefício, sem verificação da data da perícia. Abaixo de 55 anos ou de 55 a 59 anos com menos de 15 anos de benefício, exige última perícia em janeiro/2017 ou depois.'},
+ 'Daycoval':{min:21,max:[80,11,29],at:'fim',entry108:[70],note:'O PDF exemplifica entrada aos 70 anos em 108x, 71 anos em 96x e 72 anos em 84x. Aplicado também o limite de entrada de 70 anos para o refin de 108x. Invalidez: a partir de 60 anos sem verificação da perícia; de 55 a 59 anos e 11 meses, exige 13 anos de benefício.'},
+ 'Digio':{min:18,max:[70,11],note:'Limite indicado para 108x. Invalidez: espécies 32 e 93 acima dos 60 anos.'},
+ 'Facta':{min:21,max:[71,11,29],note:'Limite para refin em 108x. Em 96x, o PDF informa até 72 anos, 11 meses e 29 dias. Invalidez: a partir de 60 anos; de 55 a 59 anos e 11 meses, exige 15 anos de benefício.'},
+ 'Finanto':{min:22,max:[68,10],note:'Invalidez: apenas a partir de 60 anos. Formalização: não atende clientes acima de 60 anos residentes em AP, PB, TO, RR e SC.'},
+ 'Happy Consig':{min:21,max:[69,11,29],note:'Invalidez: a partir de 60 anos ou de 55 a 59 anos e 11 meses com 15 anos de benefício; exceto espécie 32.'},
+ 'Havecred':{min:21,max:[71,8,29],note:'Limite para refin em 108x. Em 96x: até 72 anos, 8 meses e 29 dias; em 84x: até 73 anos, 8 meses e 29 dias. Espécies 32 e 92 não atendidas; benefícios 04, 05 e 06 apenas acima de 58 anos. Formalização: não atende residentes em AP, PB, TO, RR e SC a partir de 60 anos.'},
+ 'icred':{min:21,max:[69],note:'Invalidez: a partir de 58 anos sem verificação da perícia; de 55 a 59 anos e 11 meses com 15 anos de benefício. Formalização: não atende clientes acima de 60 anos residentes em AP, PB, TO, RR e SC.'},
+ 'Nossa Fintech':{min:18,max:[70],note:'Limite para refin em 108x. Em 96x: até 71 anos; em 84x: até 72 anos. Invalidez: não aceita espécie 32; máximo de 69 anos e 11 meses no início do contrato; benefícios 05 e 92 somente a partir de 60 anos. Formalização: não atende clientes acima de 60 anos residentes em AP, PB, TO, RR e SC.'},
+ 'PB Consignado':{min:18,max:[68,11,29],note:'Limite para refin em 108x. Em 96x: até 69 anos, 11 meses e 29 dias. Invalidez: de 19 a 64 anos, 11 meses e 29 dias; contrato deve terminar antes dos 75 anos. A partir de 58 anos sem verificação da perícia; de 55 a 57 anos com 15 anos de benefício sem verificação da data da perícia. Demais casos dependem da comunicação de decisão especificada no PDF.'}
+};
+function dateOnly(s){
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+ const [y,m,d]=s.split('-').map(Number),dt=new Date(Date.UTC(y,m-1,d));
+ return y>=1900&&dt.getUTCFullYear()===y&&dt.getUTCMonth()===m-1&&dt.getUTCDate()===d?dt:null;
+}
+function todayDate(){
+ const p=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+ const v=t=>p.find(x=>x.type===t).value;
+ return dateOnly(`${v('year')}-${v('month')}-${v('day')}`);
+}
+function addMonths(d,n){
+ const t=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+n,1));
+ const last=new Date(Date.UTC(t.getUTCFullYear(),t.getUTCMonth()+1,0)).getUTCDate();
+ t.setUTCDate(Math.min(d.getUTCDate(),last));return t;
+}
+function ageParts(birth,on){
+ let months=(on.getUTCFullYear()-birth.getUTCFullYear())*12+on.getUTCMonth()-birth.getUTCMonth();
+ if(addMonths(birth,months)>on)months--;
+ return [Math.floor(months/12),months%12,Math.round((on-addMonths(birth,months))/864e5)];
+}
+const ageText=a=>`${a[0]} anos${a.length>1?`, ${a[1]} meses`:''}${a.length>2?` e ${a[2]} dias`:''}`;
+function ageLimitDate(birth,max){
+ let d=addMonths(birth,max[0]*12+(max[1]||0));
+ if(max.length===3)d.setUTCDate(d.getUTCDate()+max[2]);
+ else {d=addMonths(birth,max[0]*12+(max[1]||0)+(max.length===1?12:1));d.setUTCDate(d.getUTCDate()-1);}
+ return d;
+}
+function birthState(value,on=todayDate()){
+ if(!value)return {birth:null,on};
+ const birth=dateOnly(value);
+ if(!birth||birth>on)return {error:'Informe uma data de nascimento válida, que não seja futura.',on};
+ return {birth,on,age:ageParts(birth,on)};
+}
+function ageEligibility(b,state,term,operation){
+ if(!state.birth)return '';
+ const rule=b.ageRule||{min:+b.idMin,max:[+b.idMax]};
+ if(state.on<addMonths(state.birth,rule.min*12))return `idade mínima de ${rule.min} anos na contratação`;
+ const end=rule.at==='fim'?addMonths(state.on,term):state.on;
+ if(end>ageLimitDate(state.birth,rule.max))return `limite de ${ageText(rule.max)} ${rule.at==='fim'?'no fim do contrato':'na contratação'}`;
+ if(operation==='refin'&&rule.entry108&&state.on>ageLimitDate(state.birth,rule.entry108))return `entrada até ${ageText(rule.entry108)} para refin em 108x, conforme exemplo do PDF`;
+ return '';
+}
+function birthHint(id,target){
+ const state=birthState($(id).value);
+ $(target).textContent=state.error||(state.birth?`Idade atual: ${ageText(state.age)}. Cálculo atualizado na data da simulação.`:'Sem data de nascimento: as possibilidades não serão filtradas por idade.');
+ return state;
+}
+
+let banks=R.map(r=>({...Object.fromEntries(K.map((k,j)=>[k,r[j]])),ageRule:AGE_RULES[r[0]]}));
 const TXT=['nome','esp','bloq'], BOOL=['pura','agrega'];
 
 function drawBanks(){
-  $('banks').innerHTML=banks.map((b,k)=>`<details class="bank"><summary>${esc(b.nome)}</summary><div class="grid" style="margin-top:10px">${K.map(f=>{
+  $('banks').innerHTML=banks.map((b,k)=>`<details class="bank"><summary>${esc(b.nome)}</summary><div class="grid" style="margin-top:10px">${b.ageRule?`<p style="grid-column:1/-1"><b>Idade:</b> a partir de ${b.ageRule.min} anos; até ${ageText(b.ageRule.max)} ${b.ageRule.at==='fim'?'no fim do contrato':'na contratação'}.<br>${esc(b.ageRule.note)}<br><small>Fonte: resumo DG, 08/09/2026. Limites sem dias incluem o último mês/ano indicado. Onde o PDF não especifica o momento, considera-se a contratação. O refin continua em 108x.</small></p>`:''}${K.filter(f=>!b.ageRule||!['idMin','idMax'].includes(f)).map(f=>{
     const a=`data-k="${k}" data-f="${f}"`;
     if(BOOL.includes(f)) return `<label>${L[f]}<select ${a}><option value="1" ${+b[f]?'selected':''}>Sim</option><option value="0" ${+b[f]?'':'selected'}>Não</option></select></label>`;
     return `<label ${f=='nome'||f=='esp'||f=='bloq'?'style="grid-column:1/-1"':''}>${L[f]}<input ${a} ${TXT.includes(f)?'':'type="number" step="0.01" inputmode="decimal"'} value="${esc(b[f])}"></label>`;
@@ -211,7 +277,7 @@ function parse(t){
 function fill(c){
   $('orig').value=c.orig; $('tipo').value=REDE.test(norm(c.orig))?'rede':'corban';
   ['parc','prazo','pagas','taxa','marg'].forEach(k=>$(k).value=c[k]);
-  $('idade').value=$('idade0').value;
+  $('nasc').value=$('nasc0').value;
 }
 const apto=c=>true;
 function pick(){
@@ -221,11 +287,13 @@ function pick(){
 
 function calc(){
   const parc=+$('parc').value, prazo=+$('prazo').value, pagas=+$('pagas').value, i=+$('taxa').value/100;
-  const marg=+$('marg').value||0, idade=$('idade').value===''?null:+$('idade').value;
+  const marg=+$('marg').value||0, age=birthHint('nasc','ageHint');
+  $('ageScope').textContent='Filtro pelos limites gerais de idade. Benefícios por invalidez e restrições de formalização por idade/UF exigem conferir as condições específicas em Regras dos bancos. O vencimento final é estimado a partir de hoje.';
+  if(age.error){$('sum').textContent=age.error;$('out').innerHTML='';$('dados').open=true;return;}
   const orig=norm($('orig').value.trim()), tipo=$('tipo').value, n=prazo-pagas;
   if(!(parc>0&&i>0&&n>0)){ $('sum').innerHTML='Abra "Dados do contrato" e confira parcela, taxa, prazo e parcelas pagas.'; $('dados').open=true; $('out').innerHTML=''; return; }
   const saldo=pv(parc,n,i), restante=parc*n;
-  $('sum').innerHTML=`<div>Banco de origem<b>${esc($('orig').value)}</b></div><div>Parcela<b>${brl(parc)}</b></div><div>Restantes<b>${n}</b></div><div>Saldo estimado<b>${brl(saldo)}</b></div>`;
+  $('sum').innerHTML=`<div>Banco de origem<b>${esc($('orig').value)}</b></div><div>Parcela<b>${brl(parc)}</b></div><div>Restantes<b>${n}</b></div><div>Saldo estimado<b>${brl(saldo)}</b></div><div>Idade atual<b>${age.birth?ageText(age.age):'Não informada'}</b></div>`;
   const tmin=1.74, tmax=1.85;
   const rows=banks.map(b=>{
     const m=[];
@@ -234,14 +302,14 @@ function calc(){
     let min=tipo=='rede'?+b.rede:+b.corban;
     norm(b.esp).split(',').forEach(p=>{const [nm,v]=p.split(':'); if(nm&&v&&orig.includes(nm.trim())) min=+v;});
     if(pagas<min) m.push(`exige ${min} parcelas pagas (há ${pagas})`);
-    if(idade!==null&&(idade<b.idMin||idade>b.idMax)) m.push(`idade fora de ${b.idMin} a ${b.idMax} anos`);
+    const agePura=ageEligibility(b,age,n,'pura'), ageRefin=ageEligibility(b,age,PR,'refin');
     if(saldo<b.saldoMin) m.push(`saldo mínimo de ${brl(+b.saldoMin)}`);
     if(!(b.port/100<i)) m.push('taxa não é menor que a do contrato');
     let pura=null, refin=null;
     if(!m.length){
-      if(+b.pura){ const ip=Math.max(+b.port,+b.puraMin)/100;
+      if(+b.pura&&!agePura){ const ip=Math.max(+b.port,+b.puraMin)/100;
         if(ip<i){ const np=pmt(saldo,n,ip); if(np>=b.parcMin) pura={np,eco:restante-np*n,t:ip*100}; } }
-      if(PR>n){
+      if(PR>n&&!ageRefin){
         const p2=parc+(+b.agrega?marg:0);
         // Busca descendente em centésimos: seleciona a primeira taxa viável.
         for(let cent=Math.round(tmax*100);cent>=Math.round(tmin*100);cent--){
@@ -255,9 +323,13 @@ function calc(){
           }
         }
       }
-      if(!pura&&!refin) m.push('sem operação viável com as taxas atuais');
+      if(!pura&&!refin){
+        if(+b.pura&&agePura)m.push('só portar: '+agePura);
+        if(ageRefin)m.push('portar com troco: '+ageRefin);
+        if(!m.length)m.push('sem operação viável com as taxas atuais');
+      }
     }
-    return {b,m,pura,refin};
+    return {b,m,pura,refin,agePura,ageRefin};
   });
   const ok=rows.filter(r=>!r.m.length).sort((a,z)=>(z.refin?z.refin.t:0)-(a.refin?a.refin.t:0));
   const no=rows.filter(r=>r.m.length);
@@ -265,8 +337,8 @@ function calc(){
   const card=r=>{
     const tg=(r.refin&&r.refin.t===bt?'<span class="tag ok">Maior troco</span>':'')+(r.pura&&r.pura.eco===be&&r.pura.t>=1.2?'<span class="tag ok">Maior economia</span>':'');
     return `<div class="res"><h3>${esc(r.b.nome)}<span>${tg}</span></h3><div class="two">
-    <div><small>Só portar</small><big>${r.pura?brl(r.pura.np):'Não faz'}</big><small>${r.pura?`parcela, ${brl(parc-r.pura.np)} a menos${r.pura.t<1.2?' (taxa piso, pode ser maior)':''}`:'sem troco'}</small></div>
-    <div><small>Portar com troco</small><big>${r.refin?brl(r.refin.t):'Sem troco'}</big><small>${r.refin?`parcela ${brl(r.refin.p2)} em ${PR}x, taxa ${r.refin.tx}% a.m.`:'não compensa'}</small></div></div></div>`;
+    <div><small>Só portar</small><big>${r.pura?brl(r.pura.np):'Não faz'}</big><small>${r.pura?`parcela, ${brl(parc-r.pura.np)} a menos${r.pura.t<1.2?' (taxa piso, pode ser maior)':''}`:esc(r.agePura||'sem troco')}</small></div>
+    <div><small>Portar com troco</small><big>${r.refin?brl(r.refin.t):'Sem troco'}</big><small>${r.refin?`parcela ${brl(r.refin.p2)} em ${PR}x, taxa ${r.refin.tx}% a.m.`:esc(r.ageRefin||'não compensa')}</small></div></div></div>`;
   };
   $('out').innerHTML=`<div class="hl">${ok.length} ${ok.length==1?'banco pode':'bancos podem'} portar</div>`+ok.map(card).join('')+
    (no.length?`<details class="fora"><summary>${no.length} não podem portar</summary>${no.map(r=>`<p><b>${esc(r.b.nome)}</b>: <span class="mot">${esc(r.m.join('; '))}</span></p>`).join('')}</details>`:'');
@@ -291,11 +363,12 @@ $('file').addEventListener('change',async e=>{
   e.target.value='';
 });
 $('go').addEventListener('click',()=>{
+  const age=birthHint('nasc0','ageHint0');if(age.error){$('err').textContent=age.error;return;}
   contracts=parse($('txt').value);
   if(!contracts.length){ $('err').textContent='Não encontrei contratos ativos. Cole o texto completo do extrato, incluindo a seção "Contratos ativos e suspensos", ou use "Preencher manualmente".'; return; }
-  $('err').textContent=''; $('idade').value=$('idade0').value; const ix=Math.max(0,contracts.findIndex(apto)); fill(contracts[ix]); pick(); if($('sel')) $('sel').value=ix; $('dados').open=false; vig(); show('v2'); calc();
+  $('err').textContent=''; $('nasc').value=$('nasc0').value; const ix=Math.max(0,contracts.findIndex(apto)); fill(contracts[ix]); pick(); if($('sel')) $('sel').value=ix; $('dados').open=false; vig(); show('v2'); calc();
 });
-$('manual').addEventListener('click',()=>{contracts=[];['orig','parc','prazo','pagas','taxa','marg'].forEach(k=>$(k).value='');$('idade').value=$('idade0').value;pick();$('dados').open=true;vig();show('v2');calc();});
+$('manual').addEventListener('click',()=>{if(birthHint('nasc0','ageHint0').error){$('err').textContent='Confira a data de nascimento.';return;}contracts=[];['orig','parc','prazo','pagas','taxa','marg'].forEach(k=>$(k).value='');$('nasc').value=$('nasc0').value;pick();$('dados').open=true;vig();show('v2');calc();});
 $('rules').addEventListener('click',()=>{drawBanks();show('v3');});
 $('back').addEventListener('click',()=>show('v1'));
 $('back3').addEventListener('click',()=>show('v1'));
@@ -303,6 +376,11 @@ $('dados').addEventListener('input',calc);
 $('banks').addEventListener('input',e=>{const t=e.target,k=t.dataset.k,f=t.dataset.f; if(k===undefined) return; banks[k][f]=(TXT.includes(f))?t.value:+t.value;});
 $('banks').addEventListener('click',e=>{const d=e.target.dataset.del; if(d===undefined) return; banks.splice(+d,1); drawBanks();});
 $('add').addEventListener('click',()=>{banks.push(Object.fromEntries(K.map((k,j)=>[k,['Novo banco',0,0,1.5,1.7,108,1,12,'',100,0,0,0,0,18,80,''][j]]))); drawBanks();});
+
+for(const id of ['nasc0','nasc'])$(id).max=todayDate().toISOString().slice(0,10);
+$('nasc0').addEventListener('input',()=>birthHint('nasc0','ageHint0'));
+$('nasc').addEventListener('input',()=>{$('nasc0').value=$('nasc').value;birthHint('nasc0','ageHint0');});
+birthHint('nasc0','ageHint0');
 </script>
 </body>
 </html>
