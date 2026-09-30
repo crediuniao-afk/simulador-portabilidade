@@ -205,11 +205,10 @@ function ageParts(birth,on){
  return [Math.floor(months/12),months%12,Math.round((on-addMonths(birth,months))/864e5)];
 }
 const ageText=a=>`${a[0]} anos${a.length>1?`, ${a[1]} meses`:''}${a.length>2?` e ${a[2]} dias`:''}`;
-function ageLimitDate(birth,max){
- let d=addMonths(birth,max[0]*12+(max[1]||0));
- if(max.length===3)d.setUTCDate(d.getUTCDate()+max[2]);
- else {d=addMonths(birth,max[0]*12+(max[1]||0)+(max.length===1?12:1));d.setUTCDate(d.getUTCDate()-1);}
- return d;
+function ageExceeds(birth,on,max){
+ const actual=ageParts(birth,on),limit=[max[0],max.length>1?max[1]:11,max.length>2?max[2]:Infinity];
+ for(let i=0;i<3;i++){if(actual[i]!==limit[i])return actual[i]>limit[i];}
+ return false;
 }
 function birthState(value,on=todayDate()){
  if(!value)return {birth:null,on};
@@ -222,8 +221,8 @@ function ageEligibility(b,state,term,operation){
  const rule=b.ageRule||{min:+b.idMin,max:[+b.idMax]};
  if(state.on<addMonths(state.birth,rule.min*12))return `idade mínima de ${rule.min} anos na contratação`;
  const end=rule.at==='fim'?addMonths(state.on,term):state.on;
- if(end>ageLimitDate(state.birth,rule.max))return `limite de ${ageText(rule.max)} ${rule.at==='fim'?'no fim do contrato':'na contratação'}`;
- if(operation==='refin'&&rule.entry108&&state.on>ageLimitDate(state.birth,rule.entry108))return `entrada até ${ageText(rule.entry108)} para refin em 108x, conforme exemplo do PDF`;
+ if(ageExceeds(state.birth,end,rule.max))return `limite de ${ageText(rule.max)} ${rule.at==='fim'?'no fim do contrato':'na contratação'}`;
+ if(operation==='refin'&&rule.entry108&&ageExceeds(state.birth,state.on,rule.entry108))return `entrada até ${ageText(rule.entry108)} para refin em 108x, conforme exemplo do PDF`;
  return '';
 }
 function birthHint(id,target){
