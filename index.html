@@ -449,7 +449,18 @@ $('go').addEventListener('click',()=>{
 });
 $('manual').addEventListener('click',()=>{const age=birthHint('nasc0','ageHint0');if(age.error){$('err').textContent=age.error;$('nasc0').focus();return;}const benefit=benefitState('start',age);if(benefit.error){$('err').textContent=benefit.error;return;}syncBenefit('start','edit');contracts=[];['orig','parc','prazo','pagas','taxa','marg'].forEach(k=>$(k).value='');$('nasc').value=$('nasc0').value;pick();$('dados').open=true;vig();show('v2');calc();});
 $('rules').addEventListener('click',()=>{drawBanks();show('v3');});
-$('back').addEventListener('click',()=>window.location.reload());
+function clearNewStatement(){
+  document.querySelectorAll('#v1 input, #v1 textarea, #v1 select').forEach(field=>{
+    if(field.tagName==='SELECT') field.selectedIndex=0;
+    else if(field.type==='checkbox'||field.type==='radio') field.checked=field.defaultChecked;
+    else field.value='';
+  });
+  $('err').textContent='';
+  birthHint('nasc0','ageHint0');
+  toggleBenefit('start');
+}
+$('back').addEventListener('click',()=>{clearNewStatement();window.location.reload();});
+window.addEventListener('pageshow',()=>{clearNewStatement();show('v1');});
 $('back3').addEventListener('click',()=>show('v1'));
 $('dados').addEventListener('input',calc);
 $('banks').addEventListener('input',e=>{const t=e.target,k=t.dataset.k,f=t.dataset.f; if(k===undefined) return; banks[k][f]=(TXT.includes(f))?t.value:+t.value;});
