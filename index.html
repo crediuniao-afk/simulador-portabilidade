@@ -54,11 +54,12 @@ details.fora{margin-top:16px}details.fora summary{cursor:pointer;color:var(--mut
 <main>
 <noscript><p class="warn">Esta visualização não executa o simulador. Abra o arquivo HTML no navegador com JavaScript habilitado.</p></noscript>
 <div id="v1">
-<h1>Simulador de portabilidade</h1>
+<h1>Simulador de portabilidade</h1><p class="note">Informe o nascimento, carregue o extrato e clique em Ver possibilidades.</p>
 <p class="sub">Cole o extrato de empréstimos consignados do INSS e veja quais bancos podem portar.</p>
+<label style="margin-top:10px">Data de nascimento do cliente (obrigatória)<input id="nasc0" required type="date" min="1900-01-01" aria-describedby="ageHint0"></label><p class="note" id="ageHint0" aria-live="polite"></p>
 <textarea id="txt" placeholder="Cole aqui o texto do extrato (Meu INSS &gt; Histórico de empréstimo consignado)"></textarea>
 <label style="margin-top:10px">Ou carregue o arquivo do extrato (PDF ou texto)<input id="file" type="file" accept=".pdf,.txt,application/pdf,text/plain"></label>
-<label style="margin-top:10px">Data de nascimento do cliente (obrigatória)<input id="nasc0" required type="date" min="1900-01-01" aria-describedby="ageHint0"></label><p class="note" id="ageHint0" aria-live="polite"></p>
+
 <button id="go" class="pri" type="button">Ver possibilidades</button>
 <div id="err" class="err"></div>
 <p class="note"><button class="lnk" id="manual" type="button">Preencher manualmente</button> <button class="lnk" id="rules" type="button">Regras dos bancos</button></p>
@@ -357,7 +358,7 @@ $('file').addEventListener('change',async e=>{
       for(let p=1;p<=pdf.numPages;p++){ const c=await (await pdf.getPage(p)).getTextContent(); t+=c.items.map(i=>i.str).join(' ')+'\n'; }
     } else t=await f.text();
     if(!t.trim()) throw new Error('Este PDF não contém texto legível. Use o PDF original baixado do Meu INSS.');
-    $('txt').value=t; $('err').textContent=''; $('go').click();
+    $('txt').value=t; $('err').textContent='Extrato carregado. Informe a data de nascimento e clique em Ver possibilidades.';
   }catch(x){ $('err').textContent='Não consegui abrir o extrato. '+(x.message||'Confira o arquivo e tente novamente.'); }
   e.target.value='';
 });
