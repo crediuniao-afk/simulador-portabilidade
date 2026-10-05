@@ -82,11 +82,11 @@ details.fora{margin-top:16px}details.fora summary{cursor:pointer;color:var(--mut
 <label>Taxa do contrato (% a.m.)<input id="taxa" type="number" inputmode="decimal" step="0.01"></label>
 <label>Margem livre (R$)<input id="marg" type="number" inputmode="decimal" step="0.01"></label>
 <label>Data de nascimento (obrigatória)<input id="nasc" required type="date" min="1900-01-01" aria-describedby="ageHint"></label><p class="note" id="ageHint" aria-live="polite"></p>
-<label>Taxa do refin: mínima (% a.m.)<input id="tmin" type="number" inputmode="decimal" step="0.01" value="1.74" readonly></label>
-<label>Taxa do refin: máxima (% a.m.)<input id="tmax" type="number" inputmode="decimal" step="0.01" value="1.85" readonly></label>
+<label>Faixa geral do refin: mínima (% a.m.)<input id="tmin" type="number" inputmode="decimal" step="0.01" value="1.74" readonly></label>
+<label>Faixa geral do refin: máxima (% a.m.)<input id="tmax" type="number" inputmode="decimal" step="0.01" value="1.85" readonly></label>
 </div></details>
 <div id="ageScope" class="note"></div><div id="out"></div>
-<p class="note">Estimativa sem IOF, tarifas e seguro, priorizando a maior taxa de refin viável entre 1,85% e 1,74% a.m.; a taxa real depende da tabela e da análise. Regras: resumo DG Promotora de 08/09/2026. Confirme CET e total a pagar na proposta.</p>
+<p class="note">Estimativa sem IOF, tarifas e seguro, priorizando a maior taxa de refin viável nas tabelas de cada banco; faixa geral de 1,85% a 1,74% a.m., com exceções cadastradas para Happy e Havecred. A taxa real depende da tabela e da análise. Regras: resumo DG Promotora de 08/09/2026 e ajustes pontuais CrediUnião de 05/10/2026. Confirme CET e total a pagar na proposta.</p>
 </div>
 
 <div id="v3" hidden>
@@ -155,16 +155,16 @@ const VIGENCIA='2026-09-08';
 const K=['nome','pura','puraMin','port','refin','prazo','rede','corban','esp','trocoMin','trocoPct','parcMin','saldoMin','agrega','idMin','idMax','bloq'];
 const L={nome:'Banco',pura:'Portab. pura (1=sim)',puraMin:'Taxa mín. pura %',port:'Taxa portab. mín. %',refin:'Taxa refin mín. %',prazo:'Prazo refin (fixo em 108, não usado)',rede:'Mín. pagas (rede)',corban:'Mín. pagas (corban)',esp:'Pagas por origem (ex.: pan:12)',trocoMin:'Troco mín. R$',trocoPct:'Troco mín. % do novo',parcMin:'Parcela mín. R$',saldoMin:'Saldo mín. R$',agrega:'Agrega margem no refin (1=sim)',idMin:'Idade mín.',idMax:'Idade máx.',bloq:'Origens não permitidas'};
 const R=[
-['QualiBanking',1,0,1.10,1.66,108,1,1,'pan:12,daycoval:12,facta:12',100,0,0,2000,0,18,80.75,'pine,c6,brb,pb,bradescard,qitech,inbursa,alfa,banese,topazio,mercantil,original,abc,senff,zema,ccb,bradesco,bari,al5,crediare,digi'],
+['QualiBanking',1,0,1.10,1.66,108,0,0,'',100,0,0,2000,0,18,80.75,'pine,c6,brb,pb,bradescard,qitech,inbursa,alfa,banese,topazio,mercantil,original,abc,senff,zema,ccb,bradesco,bari,al5,crediare,digi'],
 ['Banrisul',1,1.63,1.49,1.65,108,1,12,'pan:30',100,0,0,5000,1,21,68.95,'brb,sabemi'],
 ['BRB',0,0,0,1.79,108,1,12,'pan:12',100,0,0,3000,0,18,80.95,'inbursa,c6,picpay,agibank'],
 ['C6 Consig',1,1.75,1.35,1.55,108,0,12,'pan:37,pb:13',100,0,0,2000,1,21,73.95,'agibank,brb,daycoval,safra,inbursa'],
 ['Daycoval',0,0,1.44,1.56,108,0,12,'pan:15,inbursa:13,facta:24,nbc:24',100,0,20,0,1,21,80.95,'alfa,c6,safra'],
 ['Digio',0,0,1.42,1.60,108,1,1,'',250,0,70,0,0,18,70.95,'bradesco,banco do brasil,banrisul'],
-['Facta',1,1.70,0.90,1.68,108,0,12,'pan:30,agibank:15,bmg:12,pb:15,c6:12,ole:12,santander:12',50,0,0,0,1,21,71.95,'inbursa,paulista,socred,pine,nbc,zema'],
+['Facta',1,1.75,0.90,1.68,108,0,12,'pan:30,agibank:15,bmg:12,pb:15,c6:12,ole:12,santander:12',50,0,0,0,1,21,71.95,'inbursa,paulista,socred,pine,nbc,zema'],
 ['Finanto',1,1.60,1.10,1.60,108,1,1,'pan:12,agibank:12,pb:12,santander:12,parati:12,daycoval:12,mercantil:12',0,2,50,0,0,22,68.85,'safra,c6,facta,qitech,inbursa,pine,bnp,alfa,picpay'],
-['Happy Consig',0,0,1.45,1.77,108,1,1,'pan:12,facta:12,c6:18',100,0,0,4000,0,21,69.95,'inbursa,pine,brb,qitech'],
-['Havecred',1,0,0.60,1.65,108,1,1,'pan:12,agibank:12,facta:12',50,0,0,1000,0,21,71.65,'c6,bari,pine,pb,inbursa,qitech,nbc'],
+['Happy Consig',0,0,1.45,1.71,108,1,1,'pan:12,facta:12,c6:18',100,0,0,4000,0,21,69.95,'inbursa,pine,brb,qitech'],
+['Havecred',1,0,0.60,1.65,108,1,1,'pan:12,agibank:12,facta:12',50,0,0,4000,0,21,71.65,'c6,bari,pine,pb,inbursa,qitech,nbc'],
 ['icred',0,0,0.97,1.50,108,1,12,'pan:12,c6:12',100,0,0,3000,0,21,69,'inbursa,pine,qitech'],
 ['Nossa Fintech',0,0,0.60,1.75,108,1,1,'pan:12,agibank:12,facta:12',100,0,0,1000,0,18,70,'pine,c6,brb,qitech,inbursa,mercantil,nbc,bari'],
 ['PB Consignado',1,0,1.10,1.80,108,1,12,'agibank:13,inbursa:13,c6:25',100,0,120,0,0,18,68.95,'barigui,facta']
@@ -234,7 +234,68 @@ function birthHint(id,target){
  return state;
 }
 
-let banks=R.map(r=>({...Object.fromEntries(K.map((k,j)=>[k,r[j]])),ageRule:AGE_RULES[r[0]]}));
+
+const COMMERCIAL_UPDATE='05/10/2026';
+// Bruto da pura = saldo portado. Bruto do refin = saldo portado + troco.
+// Estes critérios substituem o saldo mínimo comum apenas nos bancos abaixo.
+const OPERATION_RULES={
+ 'QualiBanking':{pureMinGross:2000,refinMinGross:2000,paidBelowGross:6000,paidBelowMin:16},
+ 'Banrisul':{pureMinGross:5000,refinMinGross:5000},
+ 'BRB':{pureMinGross:3000,refinMinGross:3000},
+ 'C6 Consig':{pureMinGross:2000,refinMinGross:2000},
+ 'Facta':{pureMinGross:1900,pureFixedRate:1.75,refinMinGross:3000},
+ 'Happy Consig':{refinTables:[{rate:1.85,minGross:4000},{rate:1.80,minGross:6000},{rate:1.75,minGross:11000},{rate:1.71,minGross:13000}]},
+ 'Havecred':{pureMinGross:4000,refinMinGross:5000,refinRateMin:1.65,lowRateMin:1.65,lowRateMax:1.70,lowRateMinGross:10000},
+ 'icred':{pureMinGross:3000,refinMinGross:3000}
+};
+const cents=value=>Math.round(value*100);
+function operationReason(b,operation,gross,pagas,rate){
+ const rule=b.operationRule;if(!rule)return '';
+ let minimum=operation==='pure'?rule.pureMinGross:rule.refinMinGross;
+ if(operation==='refin'&&rule.refinTables){
+  const table=rule.refinTables.find(t=>cents(t.rate)===cents(rate));
+  if(!table)return 'taxa fora das tabelas cadastradas';
+  minimum=table.minGross;
+ }
+ if(operation==='refin'&&rule.lowRateMinGross&&cents(rate)>=cents(rule.lowRateMin)&&cents(rate)<=cents(rule.lowRateMax))minimum=rule.lowRateMinGross;
+ if(minimum!==undefined&&cents(gross)<cents(minimum))return `bruto mínimo de ${brl(minimum)}${operation==='refin'&&rate!==undefined?` na taxa de ${rate.toFixed(2).replace('.',',')}% a.m.`:''}`;
+ if(rule.paidBelowGross&&cents(gross)<cents(rule.paidBelowGross)&&pagas<rule.paidBelowMin)return `bruto abaixo de ${brl(rule.paidBelowGross)} exige ${rule.paidBelowMin} parcelas pagas (há ${pagas})`;
+ return '';
+}
+function refinRates(b){
+ const rule=b.operationRule;
+ if(rule&&rule.refinTables)return rule.refinTables.map(t=>t.rate).sort((a,z)=>z-a);
+ const minimum=rule&&rule.refinRateMin!==undefined?rule.refinRateMin:1.74;
+ const rates=[];
+ for(let cent=185;cent>=cents(minimum);cent--){
+  if(cent<174&&!(rule?.lowRateMin!==undefined&&cent>=cents(rule.lowRateMin)&&cent<=cents(rule.lowRateMax)))continue;
+  rates.push(cent/100);
+ }
+ return rates;
+}
+function operationRuleText(b){
+ const r=b.operationRule;if(!r)return '';
+ const parts=[];
+ if(+b.pura&&r.pureMinGross!==undefined)parts.push(`Pura: saldo mínimo de ${brl(r.pureMinGross)}${r.pureFixedRate!==undefined?`, taxa de ${r.pureFixedRate.toFixed(2).replace('.',',')}% a.m.`:''}.`);
+ if(r.refinMinGross!==undefined)parts.push(`Refin: bruto mínimo de ${brl(r.refinMinGross)} (saldo + troco).`);
+ if(r.paidBelowGross)parts.push(`Bruto abaixo de ${brl(r.paidBelowGross)}: mínimo de ${r.paidBelowMin} pagas; a partir desse valor: zero pagas. Substitui os mínimos anteriores por origem.`);
+ if(r.refinTables)parts.push('Refin por tabela: '+r.refinTables.map(t=>`${t.rate.toFixed(2).replace('.',',')}%: ${brl(t.minGross)} de bruto`).join('; ')+'.');
+ if(r.lowRateMinGross)parts.push(`Entre ${r.lowRateMin.toFixed(2).replace('.',',')}% e ${r.lowRateMax.toFixed(2).replace('.',',')}%: bruto mínimo de ${brl(r.lowRateMinGross)}.`);
+ return `<p style="grid-column:1/-1"><b>Regras CrediUnião — ${COMMERCIAL_UPDATE}:</b><br>${parts.map(esc).join('<br>')}</p>`;
+}
+function originKey(value){
+ const words=norm(value).replace(/[^a-z0-9]+/g,' ').trim();
+ let key=words.replace(/ /g,'');
+ if(/\b(?:agi|agibank)\b/.test(words)||/\bagi\s+bank\b/.test(words))key='agibank';
+ if(/\b(?:qi|qitech)\b/.test(words)||/\bq\s+i\s+tech\b/.test(words))key='qitech';
+ return key.replace(/imbursa/g,'inbursa');
+}
+function matchesOrigin(orig,rule,b){
+ const key=originKey(rule);
+ return Boolean(key)&&originKey(orig).includes(key);
+}
+
+let banks=R.map(r=>({...Object.fromEntries(K.map((k,j)=>[k,r[j]])),ageRule:AGE_RULES[r[0]],operationRule:OPERATION_RULES[r[0]]}));
 const TXT=['nome','esp','bloq'], BOOL=['pura','agrega'];
 
 const INV_RULES={
@@ -247,7 +308,7 @@ const INV_RULES={
 'Facta':'55 a 59 anos com 15 anos ou mais de benefício; a partir de 60 anos, sem restrição específica de invalidez.',
 'Finanto':'Espécie 32: somente contrato novo, acima de 60 anos (não se aplica à portabilidade). Espécie 92: a partir de 60 anos.',
 'Happy Consig':'55 a 59 anos com mais de 15 anos de benefício; a partir de 60 anos, sem restrição específica de invalidez.',
-'Havecred':'A partir de 58 anos, sem restrição específica de invalidez.',
+'Havecred':'Não atende espécies 32 e 92, independentemente da idade. Atualização CrediUnião de 05/10/2026.',
 'icred':'55 a 59 anos com 15 anos de benefício; a partir de 60 anos, sem restrição específica de invalidez.',
 'Nossa Fintech':'55 a 57 anos e 11 meses com 15 anos de benefício. Outras faixas não estão definidas neste PDF.',
 'PB Consignado':'55 a 57 anos com 15 anos ou mais de benefício; a partir de 58 anos, sem restrição específica. Demais casos: comunicação de decisão com assunto Aposentadoria por invalidez, Pedido de acréscimo (25%) ou Aposentadoria por incapacidade permanente e decisão Deferimento do pedido.'
@@ -282,7 +343,7 @@ function invEligibility(b,age,data){
  if(!INV_RULES[name])return pending('regra das espécies 32/92 não cadastrada para este banco');
  if(name==='Finanto')return data.species==='32'?no('espécie 32 aceita somente para contrato novo; não para portabilidade'):y>=60?ok:no('espécie 92 exige 60 anos ou mais');
  if(['BRB','Digio'].includes(name))return y>=60?ok:no('invalidez exige 60 anos ou mais');
- if(name==='Havecred')return y>=58?ok:no('invalidez exige 58 anos ou mais');
+ if(name==='Havecred')return no('não atende às espécies 32 e 92, independentemente da idade');
  if(name==='QualiBanking')return y>=58?ok:y>=55?duration(15,true):no('invalidez exige pelo menos 55 anos');
  if(name==='C6 Consig'){
   if(y>=60)return ok;if(y<55)return exam();
@@ -309,10 +370,10 @@ function invEligibility(b,age,data){
  if(y<55)return no('invalidez exige pelo menos 55 anos');
  return duration(15,['Banrisul','Happy Consig'].includes(name));
 }
-function invReference(){return `<details class="bank"><summary>Espécies 32/92 — DG, 16/09/2026</summary><p>As regras específicas deste PDF prevalecem sobre as observações anteriores de invalidez. Os limites gerais de idade e as demais condições continuam aplicáveis. “Acima de 60/58” é tratado como idade mínima de 60/58 anos completos. Casos com lacunas ou tabela própria ficam pendentes.</p>${Object.entries(INV_RULES).map(([n,t])=>`<p><b>${esc(n)}</b>: ${esc(t)}</p>`).join('')}<p><b>Bancos do PDF sem tabela financeira neste simulador:</b> BMG: 55–59 anos e 11 meses com 15 anos de benefício ou 60+. Pan: 22–70 anos, sujeito à análise. Mais BB: sem restrição específica. Quero +Crédito: 40 até antes dos 52, ou 53–59 anos e 11 meses com mais de 13 anos de benefício, ou 60+. VCTex: 55–59 com 15 anos de benefício ou 60+. PresençaBank: 55–59 com mais de 15 anos de benefício ou 60+. NBC: a partir de 55 com mais de 15 anos de benefício ou 60+. Não geram ofertas sem as demais condições cadastradas.</p></details>`;}
+function invReference(){return `<details class="bank"><summary>Espécies 32/92 — DG, 16/09/2026 e ajustes CrediUnião</summary><p>As regras específicas deste PDF e o bloqueio Havecred atualizado em 05/10/2026 prevalecem sobre as observações anteriores de invalidez. Os limites gerais de idade e as demais condições continuam aplicáveis. “Acima de 60/58” é tratado como idade mínima de 60/58 anos completos. Casos com lacunas ou tabela própria ficam pendentes.</p>${Object.entries(INV_RULES).map(([n,t])=>`<p><b>${esc(n)}</b>: ${esc(t)}</p>`).join('')}<p><b>Bancos do PDF sem tabela financeira neste simulador:</b> BMG: 55–59 anos e 11 meses com 15 anos de benefício ou 60+. Pan: 22–70 anos, sujeito à análise. Mais BB: sem restrição específica. Quero +Crédito: 40 até antes dos 52, ou 53–59 anos e 11 meses com mais de 13 anos de benefício, ou 60+. VCTex: 55–59 com 15 anos de benefício ou 60+. PresençaBank: 55–59 com mais de 15 anos de benefício ou 60+. NBC: a partir de 55 com mais de 15 anos de benefício ou 60+. Não geram ofertas sem as demais condições cadastradas.</p></details>`;}
 
 function drawBanks(){
-  $('banks').innerHTML=invReference()+banks.map((b,k)=>`<details class="bank"><summary>${esc(b.nome)}</summary><div class="grid" style="margin-top:10px">${b.ageRule?`<p style="grid-column:1/-1"><b>Idade:</b> a partir de ${b.ageRule.min} anos; até ${ageText(b.ageRule.max)} ${b.ageRule.at==='fim'?'no fim do contrato':'na contratação'}.<br>${esc(INV_RULES[b.nome]?'Para espécies 32/92, consulte a regra atualizada de 16/09/2026 acima.':b.ageRule.note)}<br><small>Fonte: resumo DG, 08/09/2026. Limites sem dias incluem o último mês/ano indicado. Onde o PDF não especifica o momento, considera-se a contratação. O refin continua em 108x.</small></p>`:''}${K.filter(f=>!b.ageRule||!['idMin','idMax'].includes(f)).map(f=>{
+  $('banks').innerHTML=invReference()+banks.map((b,k)=>`<details class="bank"><summary>${esc(b.nome)}</summary><div class="grid" style="margin-top:10px">${b.ageRule?`<p style="grid-column:1/-1"><b>Idade:</b> a partir de ${b.ageRule.min} anos; até ${ageText(b.ageRule.max)} ${b.ageRule.at==='fim'?'no fim do contrato':'na contratação'}.<br>${esc(INV_RULES[b.nome]?'Para espécies 32/92, consulte a regra atualizada de 16/09/2026 acima.':b.ageRule.note)}<br><small>Fonte: resumo DG, 08/09/2026. Limites sem dias incluem o último mês/ano indicado. Onde o PDF não especifica o momento, considera-se a contratação. O refin continua em 108x.</small></p>`:''}${operationRuleText(b)}${K.filter(f=>(!b.ageRule||!['idMin','idMax'].includes(f))&&(!b.operationRule||f!=='saldoMin')&&(!b.operationRule?.paidBelowGross||!['rede','corban','esp'].includes(f))&&(!b.operationRule?.pureFixedRate||f!=='puraMin')&&(!b.operationRule?.refinTables||f!=='refin')).map(f=>{
     const a=`data-k="${k}" data-f="${f}"`;
     if(BOOL.includes(f)) return `<label>${L[f]}<select ${a}><option value="1" ${+b[f]?'selected':''}>Sim</option><option value="0" ${+b[f]?'':'selected'}>Não</option></select></label>`;
     return `<label ${f=='nome'||f=='esp'||f=='bloq'?'style="grid-column:1/-1"':''}>${L[f]}<input ${a} ${TXT.includes(f)?'':'type="number" step="0.01" inputmode="decimal"'} value="${esc(b[f])}"></label>`;
@@ -371,42 +432,47 @@ function calc(){
   if(!(parc>0&&i>0&&n>0)){ $('sum').innerHTML='Abra "Dados do contrato" e confira parcela, taxa, prazo e parcelas pagas.'; $('dados').open=true; $('out').innerHTML=''; return; }
   const saldo=pv(parc,n,i), restante=parc*n;
   $('sum').innerHTML=`<div>Banco de origem<b>${esc($('orig').value)}</b></div><div>Parcela<b>${brl(parc)}</b></div><div>Restantes<b>${n}</b></div><div>Saldo estimado<b>${brl(saldo)}</b></div><div>Idade atual<b>${age.birth?ageText(age.age):'Não informada'}</b></div>`;
-  const tmin=1.74, tmax=1.85;
+  // Taxas e mínimos por modalidade; exceções apenas nos bancos atualizados.
   const rows=banks.map(b=>{
     const m=[],iv=invEligibility(b,age,benefit);if(iv.status==='no')m.push(iv.reason);
     const bl=norm(b.bloq).split(',').map(s=>s.trim()).filter(Boolean);
-    if(orig&&bl.some(x=>orig.includes(x))) m.push('não porta contratos deste banco');
+    if(orig&&bl.some(x=>matchesOrigin(orig,x,b))) m.push('não porta contratos deste banco');
     let min=tipo=='rede'?+b.rede:+b.corban;
-    norm(b.esp).split(',').forEach(p=>{const [nm,v]=p.split(':'); if(nm&&v&&orig.includes(nm.trim())) min=+v;});
+    norm(b.esp).split(',').forEach(p=>{const [nm,v]=p.split(':'); if(nm&&v&&matchesOrigin(orig,nm.trim(),b)) min=+v;});
     if(pagas<min) m.push(`exige ${min} parcelas pagas (há ${pagas})`);
     const agePura=ageEligibility(b,age,n,'pura'), ageRefin=ageEligibility(b,age,PR,'refin');
-    if(saldo<b.saldoMin) m.push(`saldo mínimo de ${brl(+b.saldoMin)}`);
+    if(!b.operationRule&&saldo<b.saldoMin) m.push(`saldo mínimo de ${brl(+b.saldoMin)}`);
     if(!(b.port/100<i)) m.push('taxa não é menor que a do contrato');
     let pura=null, refin=null;
+    let pureReason=agePura||operationReason(b,'pure',saldo,pagas),refinReason=ageRefin;
     if(!m.length&&iv.status==='ok'){
-      if(+b.pura&&!agePura){ const ip=Math.max(+b.port,+b.puraMin)/100;
-        if(ip<i){ const np=pmt(saldo,n,ip); if(np>=b.parcMin) pura={np,eco:restante-np*n,t:ip*100}; } }
+      if(+b.pura&&!pureReason){
+        const ip=(b.operationRule?.pureFixedRate??Math.max(+b.port,+b.puraMin))/100;
+        if(ip<i){const np=pmt(saldo,n,ip);if(np>=b.parcMin)pura={np,eco:restante-np*n,t:ip*100};}
+      }
       if(PR>n&&!ageRefin){
         const p2=parc+(+b.agrega?marg:0);
-        // Busca descendente em centésimos: seleciona a primeira taxa viável.
-        for(let cent=Math.round(tmax*100);cent>=Math.round(tmin*100);cent--){
-          const rr=cent/100;
-          if(rr<+b.refin||p2<+b.parcMin) continue;
+        // Busca descendente nas taxas permitidas para este banco.
+        for(const rr of refinRates(b)){
+          if((!b.operationRule?.refinTables&&rr<+b.refin)||p2<+b.parcMin)continue;
           const t=Math.round((pv(p2,PR,rr/100)-saldo)*100)/100;
+          const gross=Math.round((saldo+t)*100)/100;
+          const reason=operationReason(b,'refin',gross,pagas,rr);
+          if(reason){refinReason=reason;continue;}
           const mn=Math.round(Math.max(+b.trocoMin,b.trocoPct/100*(saldo+t))*100)/100;
           if(t>=mn&&t>0){
             refin={t,p2,tx:rr.toFixed(2).replace('.',','),extra:p2*PR-restante};
-            break;
+            refinReason='';break;
           }
         }
       }
       if(!pura&&!refin){
-        if(+b.pura&&agePura)m.push('só portar: '+agePura);
-        if(ageRefin)m.push('portar com troco: '+ageRefin);
+        if(+b.pura&&pureReason)m.push('só portar: '+pureReason);
+        if(refinReason)m.push('portar com troco: '+refinReason);
         if(!m.length)m.push('sem operação viável com as taxas atuais');
       }
     }
-    return {b,m,pura,refin,agePura,ageRefin,iv};
+    return {b,m,pura,refin,agePura,ageRefin,pureReason,refinReason,iv};
   });
   const pending=rows.filter(r=>!r.m.length&&r.iv.status==='pending');
   const ok=rows.filter(r=>!r.m.length&&r.iv.status==='ok').sort((a,z)=>(z.refin?z.refin.t:0)-(a.refin?a.refin.t:0));
@@ -415,8 +481,8 @@ function calc(){
   const card=r=>{
     const tg=(r.refin&&r.refin.t===bt?'<span class="tag ok">Maior troco</span>':'')+(r.pura&&r.pura.eco===be&&r.pura.t>=1.2?'<span class="tag ok">Maior economia</span>':'');
     return `<div class="res"><h3>${esc(r.b.nome)}<span>${tg}</span></h3><div class="two">
-    <div><small>Só portar</small><big>${r.pura?brl(r.pura.np):'Não faz'}</big><small>${r.pura?`parcela, ${brl(parc-r.pura.np)} a menos${r.pura.t<1.2?' (taxa piso, pode ser maior)':''}`:esc(r.agePura||'sem troco')}</small></div>
-    <div><small>Portar com troco</small><big>${r.refin?brl(r.refin.t):'Sem troco'}</big><small>${r.refin?`parcela ${brl(r.refin.p2)} em ${PR}x, taxa ${r.refin.tx}% a.m.`:esc(r.ageRefin||'não compensa')}</small></div></div></div>`;
+    <div><small>Só portar</small><big>${r.pura?brl(r.pura.np):'Não faz'}</big><small>${r.pura?`parcela, ${brl(parc-r.pura.np)} a menos${r.pura.t<1.2?' (taxa piso, pode ser maior)':''}`:esc(r.pureReason||'sem troco')}</small></div>
+    <div><small>Portar com troco</small><big>${r.refin?brl(r.refin.t):'Sem troco'}</big><small>${r.refin?`parcela ${brl(r.refin.p2)} em ${PR}x, taxa ${r.refin.tx}% a.m.`:esc(r.refinReason||'não compensa')}</small></div></div></div>`;
   };
   $('out').innerHTML=`<div class="hl">${ok.length} ${ok.length==1?'banco pode':'bancos podem'} portar</div>`+ok.map(card).join('')+(pending.length?`<details class="bank" open><summary>${pending.length} bancos com pendências de invalidez</summary>${pending.map(r=>`<p><b>${esc(r.b.nome)}</b>: ${esc(r.iv.reason)}${r.ageRefin?`; refin: ${esc(r.ageRefin)}`:''}</p>`).join('')}</details>`:'')+
    (no.length?`<details class="fora"><summary>${no.length} não podem portar</summary>${no.map(r=>`<p><b>${esc(r.b.nome)}</b>: <span class="mot">${esc(r.m.join('; '))}</span></p>`).join('')}</details>`:'');
